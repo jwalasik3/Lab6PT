@@ -78,7 +78,7 @@ public class Main {
                 int red = color.getRed();
                 int blue = color.getBlue();
                 int green = color.getGreen();
-                Color newColor = new Color(green, red, blue); // swap green with red
+                Color newColor = new Color(saturated(green - 50),saturated(red - 50), saturated(blue - 50)); // swap green with red
                 processed.setRGB(i, j, newColor.getRGB());
             }
         }
@@ -93,5 +93,14 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    private static int saturated(int value) {
+        if (value > 255) {
+            return 255;
+        }
+        else if (value < 0) {
+            return 0;
+        }
+        return value;
     }
 }
