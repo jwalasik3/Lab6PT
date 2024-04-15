@@ -8,8 +8,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 public class Main {
@@ -32,19 +34,29 @@ public class Main {
             System.exit(1);
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(6); //Conclusion -> The optimal thread count is around 4-5 threads. Less and more will result it longer execution time
+        //ExecutorService executor = Executors.newFixedThreadPool(4); //Conclusion -> The optimal thread count is around 4-5 threads. Less and more will result it longer execution time
 
+        String finalOutputDirectory = outputDirectory;
+        ForkJoinPool customThreadPool = new ForkJoinPool(6);
         long startTime = System.currentTimeMillis();
 
-        images.parallelStream()
-                .map(pair -> Pair.of(pair.getLeft(), processImage(pair.getRight())))
-                .forEach(pair -> saveImage(pair.getRight(), outputDirectory, pair.getLeft()));
+        try {
+            customThreadPool.submit(
+                    () ->
+                            images.parallelStream()
+                                    .map(pair -> Pair.of(pair.getLeft(), processImage(pair.getRight())))
+                                    .forEach(pair -> saveImage(pair.getRight(), finalOutputDirectory, pair.getLeft()))).get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
 
         long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
         System.out.println("Total execution time: " + totalTime + " milliseconds");
-
-        executor.shutdown();
+        customThreadPool.shutdown();
+        //executor.shutdown();
     }
 
     private static List<Pair<String, BufferedImage>> loadImages(String inputDirectory) {
@@ -78,7 +90,8 @@ public class Main {
                 int red = color.getRed();
                 int blue = color.getBlue();
                 int green = color.getGreen();
-                Color newColor = new Color(saturated(green - 50),saturated(red - 50), saturated(blue - 50)); // swap green with red
+                //Color newColor = new Color(saturated(green - 50),saturated(red - 50), saturated(blue - 50)); // swap green with red
+                Color newColor = new Color(negative(red), negative(green), negative(blue));
                 processed.setRGB(i, j, newColor.getRGB());
             }
         }
@@ -102,5 +115,8 @@ public class Main {
             return 0;
         }
         return value;
+    }
+    private static int negative(int value) {
+        return Math.abs(255 - value);
     }
 }
